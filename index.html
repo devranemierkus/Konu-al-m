@@ -1,1 +1,315 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
+void main() {
+  runApp(KonusalimApp());
+}
+
+class KonusalimApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Konuşalım',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
+      ),
+      home: LoginScreen(),
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _numaraController = TextEditingController();
+  bool _isValid = true;
+  bool _loading = false;
+
+  void _girisYap() async {
+    setState(() {
+      _isValid = RegExp(r'^\d{10,13}$').hasMatch(_numaraController.text);
+    });
+    if (!_isValid) return;
+    setState(() {
+      _loading = true;
+    });
+    await Future.delayed(const Duration(seconds: 1)); // Sahte doğrulama
+    setState(() {
+      _loading = false;
+    });
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => HomeScreen(myNumber: _numaraController.text),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Konuşalım - Giriş")),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _numaraController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: "Telefon Numaranız",
+                  border: OutlineInputBorder(),
+                  errorText: _isValid ? null : "Geçersiz numara!",
+                ),
+              ),
+              const SizedBox(height: 24),
+              _loading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _girisYap,
+                      child: const Text("Giriş Yap"),
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  final String myNumber;
+  const HomeScreen({required this.myNumber});
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final List<String> contacts = [];
+  final TextEditingController _ekleController = TextEditingController();
+  String? _ekleError;
+
+  // Demo: "Konuşalım" yüklü numaralar
+  final List<String> konusalimYuklu = ['5051112233', '5334445566', '5550001111'];
+
+  void _ekle() {
+    String numara = _ekleController.text.trim();
+    if (!RegExp(r'^\d{10,13}$').hasMatch(numara)) {
+      setState(() => _ekleError = "Geçersiz numara");
+      return;
+    }
+    if (contacts.contains(numara)) return;
+    setState(() {
+      contacts.add(numara);
+      _ekleController.clear();
+      _ekleError = null;
+    });
+  }
+
+  void _sohbetAc(String numara) {
+    if (!konusalimYuklu.contains(numara)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bu kişide Konuşalım uygulaması yüklü değil!')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(myNumber: widget.myNumber, otherNumber: numara),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Konuşalım - Ana Menü")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text('Hoşgeldin, ${widget.myNumber}', style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ekleController,
+                    decoration: InputDecoration(
+                      labelText: "Numara Ekle",
+                      errorText: _ekleError,
+                      border: const OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(onPressed: _ekle, child: const Text("Ekle")),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: contacts.isEmpty
+                  ? const Center(child: Text("Henüz kişi eklemediniz."))
+                  : ListView.builder(
+                      itemCount: contacts.length,
+                      itemBuilder: (ctx, i) => ListTile(
+                        title: Text(contacts[i]),
+                        leading: const Icon(Icons.person),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.chat_bubble),
+                          onPressed: () => _sohbetAc(contacts[i]),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatScreen extends StatefulWidget {
+  final String myNumber;
+  final String otherNumber;
+  const ChatScreen({required this.myNumber, required this.otherNumber});
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final List<Map<String, dynamic>> messages = [];
+  final TextEditingController _msgController = TextEditingController();
+
+  void _mesajGonder({String? text, String? imagePath, String? videoPath}) {
+    if ((text == null || text.trim().isEmpty) && imagePath == null && videoPath == null) return;
+    setState(() {
+      messages.add({
+        'text': text,
+        'image': imagePath,
+        'video': videoPath,
+        'isMe': true,
+        'time': DateTime.now(),
+      });
+    });
+    _msgController.clear();
+  }
+
+  Future<void> _medyaSec(bool isVideo) async {
+    final picker = ImagePicker();
+    final XFile? picked = isVideo
+        ? await picker.pickVideo(source: ImageSource.gallery)
+        : await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null) {
+      if (isVideo) {
+        _mesajGonder(videoPath: picked.path);
+      } else {
+        _mesajGonder(imagePath: picked.path);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Sohbet: ${widget.otherNumber}"),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              reverse: true,
+              itemCount: messages.length,
+              itemBuilder: (ctx, i) {
+                final msg = messages[messages.length - 1 - i];
+                return Align(
+                  alignment: msg['isMe'] ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Card(
+                    color: msg['isMe'] ? Colors.blue[50] : Colors.grey[200],
+                    margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: msg['isMe']
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
+                        children: [
+                          if (msg['text'] != null && msg['text'].toString().isNotEmpty)
+                            Text(msg['text'], style: const TextStyle(fontSize: 16)),
+                          if (msg['image'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: SizedBox(
+                                height: 150,
+                                child: Image.file(File(msg['image']), fit: BoxFit.cover),
+                              ),
+                            ),
+                          if (msg['video'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.videocam),
+                                  const SizedBox(width: 8),
+                                  Text("Video: ${msg['video'].split('/').last}"),
+                                ],
+                              ),
+                            ),
+                          Text(
+                              (msg['time'] as DateTime)
+                                  .toLocal()
+                                  .toString()
+                                  .substring(0, 16),
+                              style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          SafeArea(
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.photo),
+                  onPressed: () => _medyaSec(false),
+                  tooltip: "Resim seç",
+                ),
+                IconButton(
+                  icon: const Icon(Icons.videocam),
+                  onPressed: () => _medyaSec(true),
+                  tooltip: "Video seç",
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _msgController,
+                    decoration: const InputDecoration(
+                      hintText: "Mesaj yaz...",
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: () => _mesajGonder(text: _msgController.text),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
