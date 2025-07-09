@@ -1,315 +1,154 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konuşalım</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; margin: 0; }
+    .container { max-width: 400px; margin: 40px auto; background: #fff; padding: 24px 20px; border-radius: 12px; box-shadow: 0 2px 10px #0002; }
+    h2 { color: #2e5a8a; }
+    .input-group { margin-bottom: 18px; }
+    input[type="text"], input[type="file"] { width: 100%; padding: 8px; border: 1px solid #bbb; border-radius: 5px; }
+    button { background: #2e5a8a; color: #fff; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; }
+    .menu-btn { margin-right: 8px; }
+    .warning { color: #d00; margin-bottom: 12px; }
+    #chat { height: 250px; overflow-y: auto; background: #eef1f5; margin-bottom: 12px; padding: 10px; border-radius: 7px; }
+    .msg { margin-bottom: 8px; }
+    .msg.self { text-align: right; color: #2e5a8a; }
+    .msg.other { text-align: left; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="container" id="login-screen">
+    <h2>Konuşalım</h2>
+    <div class="input-group">
+      <label>Numaranızı giriniz:</label>
+      <input type="text" id="my-number" maxlength="11" placeholder="05xxxxxxxxx">
+    </div>
+    <button onclick="checkNumber()">Numaramı Onayla</button>
+    <div id="login-warning" class="warning"></div>
+  </div>
+  <div class="container" id="main-menu" style="display:none;">
+    <h2>Ana Menü</h2>
+    <div class="input-group">
+      <label>Numara ekle:</label>
+      <input type="text" id="add-number" maxlength="11" placeholder="05xxxxxxxxx">
+      <button class="menu-btn" onclick="addContact()">Ekle</button>
+    </div>
+    <ul id="contact-list"></ul>
+    <button onclick="logout()">Çıkış Yap</button>
+  </div>
+  <div class="container" id="chat-screen" style="display:none;">
+    <h2 id="chat-with"></h2>
+    <div id="chat"></div>
+    <input type="text" id="chat-input" placeholder="Mesaj yazın">
+    <input type="file" id="file-input" style="margin-top:8px;">
+    <button onclick="sendMessage()">Gönder</button>
+    <button onclick="backToMenu()" style="background:#888;margin-left:8px;">Ana Menü</button>
+    <div id="chat-warning" class="warning"></div>
+  </div>
+  <script>
+    let myNumber = '';
+    let contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
+    let appUsers = ['05331234567', '05339876543']; // Demo: Uygulamayı yüklemiş kullanıcılar
+    let activeContact = '';
 
-void main() {
-  runApp(KonusalimApp());
-}
-
-class KonusalimApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Konuşalım',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
-      home: LoginScreen(),
-    );
-  }
-}
-
-class LoginScreen extends StatefulWidget {
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _numaraController = TextEditingController();
-  bool _isValid = true;
-  bool _loading = false;
-
-  void _girisYap() async {
-    setState(() {
-      _isValid = RegExp(r'^\d{10,13}$').hasMatch(_numaraController.text);
-    });
-    if (!_isValid) return;
-    setState(() {
-      _loading = true;
-    });
-    await Future.delayed(const Duration(seconds: 1)); // Sahte doğrulama
-    setState(() {
-      _loading = false;
-    });
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HomeScreen(myNumber: _numaraController.text),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Konuşalım - Giriş")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _numaraController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: "Telefon Numaranız",
-                  border: OutlineInputBorder(),
-                  errorText: _isValid ? null : "Geçersiz numara!",
-                ),
-              ),
-              const SizedBox(height: 24),
-              _loading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _girisYap,
-                      child: const Text("Giriş Yap"),
-                    ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  final String myNumber;
-  const HomeScreen({required this.myNumber});
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final List<String> contacts = [];
-  final TextEditingController _ekleController = TextEditingController();
-  String? _ekleError;
-
-  // Demo: "Konuşalım" yüklü numaralar
-  final List<String> konusalimYuklu = ['5051112233', '5334445566', '5550001111'];
-
-  void _ekle() {
-    String numara = _ekleController.text.trim();
-    if (!RegExp(r'^\d{10,13}$').hasMatch(numara)) {
-      setState(() => _ekleError = "Geçersiz numara");
-      return;
-    }
-    if (contacts.contains(numara)) return;
-    setState(() {
-      contacts.add(numara);
-      _ekleController.clear();
-      _ekleError = null;
-    });
-  }
-
-  void _sohbetAc(String numara) {
-    if (!konusalimYuklu.contains(numara)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu kişide Konuşalım uygulaması yüklü değil!')),
-      );
-      return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChatScreen(myNumber: widget.myNumber, otherNumber: numara),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Konuşalım - Ana Menü")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text('Hoşgeldin, ${widget.myNumber}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _ekleController,
-                    decoration: InputDecoration(
-                      labelText: "Numara Ekle",
-                      errorText: _ekleError,
-                      border: const OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.phone,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(onPressed: _ekle, child: const Text("Ekle")),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: contacts.isEmpty
-                  ? const Center(child: Text("Henüz kişi eklemediniz."))
-                  : ListView.builder(
-                      itemCount: contacts.length,
-                      itemBuilder: (ctx, i) => ListTile(
-                        title: Text(contacts[i]),
-                        leading: const Icon(Icons.person),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.chat_bubble),
-                          onPressed: () => _sohbetAc(contacts[i]),
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ChatScreen extends StatefulWidget {
-  final String myNumber;
-  final String otherNumber;
-  const ChatScreen({required this.myNumber, required this.otherNumber});
-  @override
-  State<ChatScreen> createState() => _ChatScreenState();
-}
-
-class _ChatScreenState extends State<ChatScreen> {
-  final List<Map<String, dynamic>> messages = [];
-  final TextEditingController _msgController = TextEditingController();
-
-  void _mesajGonder({String? text, String? imagePath, String? videoPath}) {
-    if ((text == null || text.trim().isEmpty) && imagePath == null && videoPath == null) return;
-    setState(() {
-      messages.add({
-        'text': text,
-        'image': imagePath,
-        'video': videoPath,
-        'isMe': true,
-        'time': DateTime.now(),
-      });
-    });
-    _msgController.clear();
-  }
-
-  Future<void> _medyaSec(bool isVideo) async {
-    final picker = ImagePicker();
-    final XFile? picked = isVideo
-        ? await picker.pickVideo(source: ImageSource.gallery)
-        : await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null) {
-      if (isVideo) {
-        _mesajGonder(videoPath: picked.path);
-      } else {
-        _mesajGonder(imagePath: picked.path);
+    function checkNumber() {
+      const num = document.getElementById('my-number').value;
+      if (!/^05\d{9}$/.test(num)) {
+        document.getElementById('login-warning').innerText = "Geçerli bir numara giriniz.";
+        return;
       }
+      myNumber = num;
+      document.getElementById('login-warning').innerText = '';
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('main-menu').style.display = '';
+      loadContacts();
     }
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Sohbet: ${widget.otherNumber}"),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              reverse: true,
-              itemCount: messages.length,
-              itemBuilder: (ctx, i) {
-                final msg = messages[messages.length - 1 - i];
-                return Align(
-                  alignment: msg['isMe'] ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Card(
-                    color: msg['isMe'] ? Colors.blue[50] : Colors.grey[200],
-                    margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: msg['isMe']
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.start,
-                        children: [
-                          if (msg['text'] != null && msg['text'].toString().isNotEmpty)
-                            Text(msg['text'], style: const TextStyle(fontSize: 16)),
-                          if (msg['image'] != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: SizedBox(
-                                height: 150,
-                                child: Image.file(File(msg['image']), fit: BoxFit.cover),
-                              ),
-                            ),
-                          if (msg['video'] != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.videocam),
-                                  const SizedBox(width: 8),
-                                  Text("Video: ${msg['video'].split('/').last}"),
-                                ],
-                              ),
-                            ),
-                          Text(
-                              (msg['time'] as DateTime)
-                                  .toLocal()
-                                  .toString()
-                                  .substring(0, 16),
-                              style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          SafeArea(
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.photo),
-                  onPressed: () => _medyaSec(false),
-                  tooltip: "Resim seç",
-                ),
-                IconButton(
-                  icon: const Icon(Icons.videocam),
-                  onPressed: () => _medyaSec(true),
-                  tooltip: "Video seç",
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _msgController,
-                    decoration: const InputDecoration(
-                      hintText: "Mesaj yaz...",
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () => _mesajGonder(text: _msgController.text),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    function addContact() {
+      const num = document.getElementById('add-number').value;
+      if (!/^05\d{9}$/.test(num)) {
+        alert('Geçerli numara giriniz.');
+        return;
+      }
+      if (!contacts.includes(num) && num !== myNumber) {
+        contacts.push(num);
+        localStorage.setItem('contacts', JSON.stringify(contacts));
+        loadContacts();
+      }
+      document.getElementById('add-number').value = '';
+    }
+
+    function loadContacts() {
+      const ul = document.getElementById('contact-list');
+      ul.innerHTML = '';
+      contacts.forEach(num => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${num}</span> <button onclick='openChat("${num}")'>Chat</button>`;
+        ul.appendChild(li);
+      });
+    }
+
+    function openChat(num) {
+      activeContact = num;
+      document.getElementById('main-menu').style.display = 'none';
+      document.getElementById('chat-screen').style.display = '';
+      document.getElementById('chat-with').innerText = `Chat: ${num}`;
+      loadChat();
+    }
+
+    function backToMenu() {
+      document.getElementById('chat-screen').style.display = 'none';
+      document.getElementById('main-menu').style.display = '';
+    }
+
+    function sendMessage() {
+      const msg = document.getElementById('chat-input').value;
+      const file = document.getElementById('file-input').files[0];
+      if (!appUsers.includes(activeContact)) {
+        document.getElementById('chat-warning').innerText = "Bu kişide Konuşalım uygulaması yüklü değil.";
+        return;
+      }
+      document.getElementById('chat-warning').innerText = '';
+      let messages = JSON.parse(localStorage.getItem('chat-' + activeContact) || '[]');
+      if (msg) {
+        messages.push({from: myNumber, text: msg, type: 'text'});
+      }
+      if (file) {
+        let url = URL.createObjectURL(file);
+        messages.push({from: myNumber, text: url, type: file.type.startsWith('image/') ? 'image' : 'file', name: file.name});
+      }
+      localStorage.setItem('chat-' + activeContact, JSON.stringify(messages));
+      document.getElementById('chat-input').value = '';
+      document.getElementById('file-input').value = '';
+      loadChat();
+    }
+
+    function loadChat() {
+      let messages = JSON.parse(localStorage.getItem('chat-' + activeContact) || '[]');
+      const chatDiv = document.getElementById('chat');
+      chatDiv.innerHTML = '';
+      messages.forEach(msg => {
+        let content = '';
+        if (msg.type === 'text') {
+          content = msg.text;
+        } else if (msg.type === 'image') {
+          content = `<img src="${msg.text}" style="max-width:120px;max-height:120px;"><div>${msg.name}</div>`;
+        } else {
+          content = `<a href="${msg.text}" download="${msg.name}">${msg.name}</a>`;
+        }
+        chatDiv.innerHTML += `<div class="msg ${msg.from === myNumber ? 'self' : 'other'}">${content}</div>`;
+      });
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
+    function logout() {
+      myNumber = '';
+      document.getElementById('main-menu').style.display = 'none';
+      document.getElementById('login-screen').style.display = '';
+    }
+  </script>
+</body>
+    </html>
