@@ -5,26 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Konuşalım</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f2f2f2; margin: 0; }
-    .container { max-width: 400px; margin: 40px auto; background: #fff; padding: 24px 20px; border-radius: 12px; box-shadow: 0 2px 10px #0002; }
-    h2 { color: #2e5a8a; }
-    .input-group { margin-bottom: 18px; }
-    input[type="text"], input[type="file"] { width: 100%; padding: 8px; border: 1px solid #bbb; border-radius: 5px; }
-    button { background: #2e5a8a; color: #fff; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; }
-    .menu-btn { margin-right: 8px; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #e0e7ff 0%, #f9fafb 100%); margin: 0; }
+    .container { max-width: 430px; margin: 48px auto; background: #fff; padding: 32px 26px; border-radius: 18px; box-shadow: 0 4px 18px #0002; }
+    h2 { color: #3b82f6; letter-spacing:1px; }
+    .input-group { margin-bottom: 20px; }
+    .input-label { font-weight: bold; margin-bottom: 4px; display: block; }
+    input[type="text"], input[type="file"], select {
+      width: 100%; padding: 10px; border: 1px solid #bfc7d1; border-radius: 7px; margin-top: 4px;
+      font-size: 1em; background: #f3f4f6;
+    }
+    button {
+      background: linear-gradient(90deg,#4f8bff 60%, #2e5a8a 100%);
+      color: #fff; border: none; padding: 10px 22px; border-radius: 7px; cursor: pointer;
+      font-weight: 600; box-shadow: 0 2px 8px #60a5fa33; transition: background 0.18s;
+    }
+    button:hover { background: linear-gradient(90deg,#2563eb 60%, #1e3a8a 100%);}
+    .menu-btn { margin-right: 10px; }
     .warning { color: #d00; margin-bottom: 12px; }
-    #chat { height: 250px; overflow-y: auto; background: #eef1f5; margin-bottom: 12px; padding: 10px; border-radius: 7px; }
-    .msg { margin-bottom: 8px; }
-    .msg.self { text-align: right; color: #2e5a8a; }
-    .msg.other { text-align: left; color: #333; }
+    #chat { height: 250px; overflow-y: auto; background: #eef1f5; margin-bottom: 12px; padding: 10px; border-radius: 7px; border:1px solid #e0e7ff;}
+    .msg { margin-bottom: 10px; }
+    .msg.self { text-align: right; color: #2563eb; }
+    .msg.other { text-align: left; color: #374151; }
+    .country-select { width: 100%; margin-bottom:8px; }
+    .flag { font-size: 1.2em; margin-right: 6px; }
+    ul#contact-list { padding-left:0; }
+    ul#contact-list li { list-style:none; padding:7px 0; border-bottom:1px dashed #e0e7ff; display:flex; justify-content:space-between; align-items:center;}
+    ul#contact-list li:last-child { border-bottom:none;}
+    .contact-num { font-size:1em; }
+    .chat-btn { background: #60a5fa; padding:5px 12px; border-radius:5px; font-size:.95em;}
+    .chat-btn:hover { background: #2563eb;}
+    .logout-btn { background: #f87171;}
+    .logout-btn:hover { background: #b91c1c;}
   </style>
 </head>
 <body>
   <div class="container" id="login-screen">
     <h2>Konuşalım</h2>
     <div class="input-group">
-      <label>Numaranızı giriniz:</label>
-      <input type="text" id="my-number" maxlength="11" placeholder="05xxxxxxxxx">
+      <label class="input-label">Ülke Kodu Seçiniz</label>
+      <select id="country-code" class="country-select">
+        <option value="+90" selected>🇹🇷 Türkiye (+90)</option>
+        <option value="+1">🇺🇸 ABD (+1)</option>
+        <option value="+44">🇬🇧 İngiltere (+44)</option>
+        <option value="+49">🇩🇪 Almanya (+49)</option>
+        <option value="+33">🇫🇷 Fransa (+33)</option>
+        <option value="+7">🇷🇺 Rusya (+7)</option>
+      </select>
+      <label class="input-label" style="margin-top:10px;">Numaranızı giriniz:</label>
+      <input type="text" id="my-number" maxlength="12" placeholder="5xxxxxxxxx">
     </div>
     <button onclick="checkNumber()">Numaramı Onayla</button>
     <div id="login-warning" class="warning"></div>
@@ -32,12 +60,20 @@
   <div class="container" id="main-menu" style="display:none;">
     <h2>Ana Menü</h2>
     <div class="input-group">
-      <label>Numara ekle:</label>
-      <input type="text" id="add-number" maxlength="11" placeholder="05xxxxxxxxx">
+      <label class="input-label">Ülke Kodu ve Numara Ekle:</label>
+      <select id="add-country-code" class="country-select">
+        <option value="+90" selected>🇹🇷 Türkiye (+90)</option>
+        <option value="+1">🇺🇸 ABD (+1)</option>
+        <option value="+44">🇬🇧 İngiltere (+44)</option>
+        <option value="+49">🇩🇪 Almanya (+49)</option>
+        <option value="+33">🇫🇷 Fransa (+33)</option>
+        <option value="+7">🇷🇺 Rusya (+7)</option>
+      </select>
+      <input type="text" id="add-number" maxlength="12" placeholder="5xxxxxxxxx">
       <button class="menu-btn" onclick="addContact()">Ekle</button>
     </div>
     <ul id="contact-list"></ul>
-    <button onclick="logout()">Çıkış Yap</button>
+    <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
   </div>
   <div class="container" id="chat-screen" style="display:none;">
     <h2 id="chat-with"></h2>
@@ -51,16 +87,17 @@
   <script>
     let myNumber = '';
     let contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-    let appUsers = ['05331234567', '05339876543']; // Demo: Uygulamayı yüklemiş kullanıcılar
+    let appUsers = ['+905331234567', '+905339876543']; // Yüklü kullanıcılar örnek
     let activeContact = '';
 
     function checkNumber() {
-      const num = document.getElementById('my-number').value;
-      if (!/^05\d{9}$/.test(num)) {
-        document.getElementById('login-warning').innerText = "Geçerli bir numara giriniz.";
+      const code = document.getElementById('country-code').value;
+      const num = document.getElementById('my-number').value.replace(/\D/g,'');
+      if (!/^\d{9,11}$/.test(num)) {
+        document.getElementById('login-warning').innerText = "Geçerli bir numara giriniz (örn: 5xxxxxxxxx).";
         return;
       }
-      myNumber = num;
+      myNumber = code + num;
       document.getElementById('login-warning').innerText = '';
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('main-menu').style.display = '';
@@ -68,13 +105,15 @@
     }
 
     function addContact() {
-      const num = document.getElementById('add-number').value;
-      if (!/^05\d{9}$/.test(num)) {
-        alert('Geçerli numara giriniz.');
+      const code = document.getElementById('add-country-code').value;
+      const num = document.getElementById('add-number').value.replace(/\D/g,'');
+      const fullNum = code + num;
+      if (!/^\d{9,11}$/.test(num)) {
+        alert('Geçerli numara giriniz (örn: 5xxxxxxxxx).');
         return;
       }
-      if (!contacts.includes(num) && num !== myNumber) {
-        contacts.push(num);
+      if (!contacts.includes(fullNum) && fullNum !== myNumber) {
+        contacts.push(fullNum);
         localStorage.setItem('contacts', JSON.stringify(contacts));
         loadContacts();
       }
@@ -85,10 +124,21 @@
       const ul = document.getElementById('contact-list');
       ul.innerHTML = '';
       contacts.forEach(num => {
+        const countryFlag = getFlag(num);
         const li = document.createElement('li');
-        li.innerHTML = `<span>${num}</span> <button onclick='openChat("${num}")'>Chat</button>`;
+        li.innerHTML = `<span class="contact-num">${countryFlag} ${num}</span> <button class="chat-btn" onclick='openChat("${num}")'>Chat</button>`;
         ul.appendChild(li);
       });
+    }
+
+    function getFlag(num) {
+      if (num.startsWith('+90')) return '🇹🇷';
+      if (num.startsWith('+1')) return '🇺🇸';
+      if (num.startsWith('+44')) return '🇬🇧';
+      if (num.startsWith('+49')) return '🇩🇪';
+      if (num.startsWith('+33')) return '🇫🇷';
+      if (num.startsWith('+7')) return '🇷🇺';
+      return '🌍';
     }
 
     function openChat(num) {
@@ -107,11 +157,7 @@
     function sendMessage() {
       const msg = document.getElementById('chat-input').value;
       const file = document.getElementById('file-input').files[0];
-      if (!appUsers.includes(activeContact)) {
-        document.getElementById('chat-warning').innerText = "Bu kişide Konuşalım uygulaması yüklü değil.";
-        return;
-      }
-      document.getElementById('chat-warning').innerText = '';
+      // Kişi uygulamayı yüklememiş olsa bile, rehberde kayıtlıysa gönderim yapılabilir
       let messages = JSON.parse(localStorage.getItem('chat-' + activeContact) || '[]');
       if (msg) {
         messages.push({from: myNumber, text: msg, type: 'text'});
@@ -135,7 +181,7 @@
         if (msg.type === 'text') {
           content = msg.text;
         } else if (msg.type === 'image') {
-          content = `<img src="${msg.text}" style="max-width:120px;max-height:120px;"><div>${msg.name}</div>`;
+          content = `<img src="${msg.text}" style="max-width:120px;max-height:120px;border-radius:7px;"><div>${msg.name}</div>`;
         } else {
           content = `<a href="${msg.text}" download="${msg.name}">${msg.name}</a>`;
         }
@@ -151,4 +197,4 @@
     }
   </script>
 </body>
-    </html>
+</html>
